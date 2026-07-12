@@ -40,18 +40,67 @@ async function main() {
 
   // --- Listing sources ---------------------------------------------------
   const sourcesData = [
-    { name: "Sreality", domain: "sreality.cz", integrationType: "MANUAL_LINK" as const },
-    { name: "Bezrealitky", domain: "bezrealitky.cz", integrationType: "MANUAL_LINK" as const },
-    { name: "iDNES Reality", domain: "reality.idnes.cz", integrationType: "MANUAL_LINK" as const },
-    { name: "České reality", domain: "ceskereality.cz", integrationType: "MANUAL_LINK" as const },
+    {
+      name: "Sreality.cz",
+      domain: "sreality.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "Bezrealitky.cz",
+      domain: "bezrealitky.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "Reality.iDNES.cz",
+      domain: "reality.idnes.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "Reality.cz",
+      domain: "reality.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "RE/MAX Česká republika",
+      domain: "remax-czech.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "M&M Reality",
+      domain: "mmreality.cz",
+      integrationType: "METADATA_IMPORT" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
+    {
+      name: "Jiný zdroj (obecný)",
+      domain: "generic",
+      integrationType: "MANUAL_LINK" as const,
+      allowMetadataImport: true,
+      allowPreviewImages: false,
+    },
   ];
 
   const sources = await Promise.all(
     sourcesData.map((source) =>
       prisma.listingSource.upsert({
         where: { domain: source.domain },
-        update: {},
-        create: { ...source, allowMetadataImport: true, allowPreviewImages: false },
+        update: {
+          name: source.name,
+          integrationType: source.integrationType,
+          allowMetadataImport: source.allowMetadataImport,
+        },
+        create: { ...source },
       })
     )
   );
@@ -211,6 +260,7 @@ async function main() {
       listings: {
         create: {
           sourceId: sreality.id,
+          addedByUserId: demo.id,
           externalId: "demo-1001",
           sourceUrl: "https://www.sreality.cz/detail/prodej/byt/3+kk/brno/demo-1001",
           title: "Prodej bytu 3+kk 78 m², Brno — Královo Pole",
@@ -264,6 +314,7 @@ async function main() {
       listings: {
         create: {
           sourceId: bezrealitky.id,
+          addedByUserId: demo.id,
           externalId: "demo-2002",
           sourceUrl: "https://www.bezrealitky.cz/nemovitosti-byty-domy/demo-2002",
           title: "Prodej bytu 3+1 84 m², Brno — Žabovřesky, družstevní",

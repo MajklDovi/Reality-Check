@@ -13,3 +13,4 @@ export { EmptyState, type EmptyStateProps } from "./empty-state";
 export { LoadingState, Spinner, type LoadingStateProps } from "./loading-state";
 export { Progress, type ProgressProps } from "./progress";
 export { TagInput, type TagInputProps } from "./tag-input";
+export { Textarea, type TextareaProps } from "./textarea";

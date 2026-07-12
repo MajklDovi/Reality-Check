@@ -1,114 +1,103 @@
 # PROJECT_STATUS
 
-Stav k: 2026-07-12 · Fáze: **onboarding a správa profilů hledání** (fáze 2)
+Stav k: 2026-07-12 · Fáze: **externí realitní nabídky** (fáze 3)
 
 ## Co bylo dokončeno
 
 ### Fáze 1 — technický základ
 
-- ✅ Next.js 15 (App Router, Turbopack), TypeScript (strict), Tailwind CSS v4,
-  ESLint 9, Prettier, `.env.example`
-- ✅ PostgreSQL + Prisma 7 (driver adapter `@prisma/adapter-pg`, `prisma.config.ts`)
-- ✅ Autentizace (Auth.js / NextAuth v5): registrace, přihlášení, odhlášení,
-  ochrana privátních stránek (middleware + layouty), role `USER` / `ADMIN`
-- ✅ Komponentová knihovna, layout aplikace, stránky `/`, `/login`, `/register`,
-  `/dashboard`, `/profile`, `/settings`, `/admin`
+- ✅ Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, PostgreSQL + Prisma 7
+- ✅ Auth.js v5 (credentials, JWT, role USER/ADMIN), middleware + layout ochrana
+- ✅ Komponentová knihovna, layout, stránky `/`, `/login`, `/register`, `/dashboard`,
+  `/profile`, `/settings`, `/admin`
 
 ### Fáze 2 — onboarding a profily hledání
 
-- ✅ Rozšíření datového modelu:
-  - `SearchPurpose` — 8 účelů (vlastní bydlení, rodina, investice dlouhodobý/krátkodobý
-    pronájem, rekreace, rekonstrukce, další prodej, pro rodiče/děti)
-  - `SearchProfile` — rozpočtová pole (ideální/maximální cena, úspory, hypotéka, příjem,
-    splátky, rezerva, rozpočet na rekonstrukci/zařízení), `propertyTypes[]`
-    (12 typů vč. družstevního bytu, ateliéru, novostavby…), `dispositions[]` (1+kk…6+),
-    `preferredCityParts[]`, `transportMode`, `isDefault`
-  - `OnboardingDraft` — rozpracovaný průvodce (JSON + aktuální krok, 1 na uživatele)
-  - `Region` — 14 českých krajů jako seed data
-- ✅ 8krokový onboarding průvodce (`/onboarding`):
-  1. účel hledání (8 možností s vysvětlením, předvyplnění názvu profilu)
-  2. rozpočet (10 částek v Kč, povinná jen maximální cena, křížová validace)
-  3. typ nemovitosti (multi-select 12 typů)
-  4. lokalita (kraje ze seedu, města/části/vyloučené jako chips, dojíždění + doprava)
-  5. velikost a dispozice (výměra, 1+kk…6+, počty pokojů, min≤max validace)
-  6. vlastnosti (vlastnictví, stav, podlaží, energetická třída, 10 checkbox vybavení)
-  7. životní styl (16 kritérií: MHD, školy, školky, obchody, lékaři, parky, příroda,
-     sport, restaurace, kultura, ticho, parkování, děti, senioři, zvířata, dojíždění)
-  8. priority (5 úrovní na kritérium; nezbytné → `isRequired` + váha 10, dále 7/4/2/0)
-- ✅ UX průvodce: progress bar, krok X z 8, návrat zpět bez ztráty dat, průběžné
-  ukládání draftu při přechodu mezi kroky, obnovení draftu po návratu (i po odhlášení),
-  validace každého kroku s českými hláškami, vysvětlující texty, mobilní layout
-- ✅ Po registraci přesměrování na `/onboarding`; dashboard nabízí „Pokračovat v profilu"
-- ✅ Správa profilů:
-  - `/search-profiles` — seznam s vyplněností, stavem a akcemi
-  - `/search-profiles/new` — přesměruje na průvodce
-  - `/search-profiles/[id]` — detail (rozpočet, nemovitost, lokalita, kritéria s prioritami)
-  - `/search-profiles/[id]/edit` — stejný průvodce předvyplněný z DB
-  - akce: duplikovat (kopie neaktivní), aktivovat/deaktivovat, nastavit výchozí,
-    odstranit (s potvrzovacím dialogem)
-- ✅ Limity plánů v `src/config/plans.ts` (konfigurovatelné, vynucované v server
-  actions, ne v UI): FREE = 1 aktivní / 5 celkem, BASIC = 3/10, PREMIUM = 10/50
-- ✅ Dashboard: karta aktivního profilu (hlavní parametry, vyplněnost, tlačítko úpravy),
-  tlačítko „Přidat nabídku" (zatím neaktivní — další fáze), prázdné stavy
-- ✅ Nové UI komponenty: `Progress`, `TagInput`
-- ✅ Seed: 14 krajů, ukázkový profil s novými poli a prioritami
-- ✅ Ověření: E2E test (Playwright, mobilní viewport 390×844) pokrývající registraci →
-  onboarding → validace všech kroků → obnovení draftu → dokončení → detail →
-  duplikaci → vynucení limitu FREE plánu; kontrola zápisů v DB (profil, preference
-  s váhami a `isRequired`, smazání draftu po dokončení); `tsc` ✓, `eslint` ✓,
-  `next build` ✓, `prisma migrate status` ✓
+- ✅ 8krokový průvodce (`/onboarding`) s progress barem, návratem zpět, průběžným
+  ukládáním draftu a obnovením; validace každého kroku (Zod, sdílené klient/server)
+- ✅ Správa profilů `/search-profiles` (+ new/[id]/[id]/edit): duplikace,
+  aktivace/deaktivace, výchozí profil, smazání; konfigurovatelné limity plánů
+  (`src/config/plans.ts`, FREE = 1 aktivní profil, vynucováno v server actions)
+- ✅ Kritéria jako `Preference` řádky s váhami 10/7/4/2/0 a `isRequired`
+
+### Fáze 3 — externí nabídky (tato fáze)
+
+- ✅ Datový model: `PropertyListing.addedByUserId` (vlastník záznamu),
+  `monthlyCosts`, `userNote`, `Property.hasLoggia`;
+  `ListingStatus` zjednodušen na ACTIVE / INACTIVE / UNKNOWN / REMOVED
+- ✅ Přidání nabídky dvěma způsoby (`/properties/new`):
+  1. **vložením URL** — validace URL, identifikace domény, přiřazení zdroje,
+     uložení původního odkazu, načtení povolených OG metadat (titulek, canonical,
+     náhled jen při `allowPreviewImages`), následná kontrola ve formuláři
+  2. **ručním formulářem** — všech ~30 polí ze zadání (zdroj, parametry, lokalita,
+     vybavení vč. lodžie, energetika, prodejce, měsíční náklady, poznámky)
+- ✅ Modulární adaptéry zdrojů (`src/lib/source-adapters/`): generic (Open Graph),
+  Sreality / Bezrealitky / Reality.iDNES placeholdery (doména + OG + externí id
+  z URL), generic adaptér realitních kanceláří (RE/MAX, M&M, Reality.cz).
+  Jediný zdvořilý požadavek: timeout 6 s, max 512 KB, žádný scraping.
+- ✅ Stránky `/properties` (grid karet), `/properties/new`, `/properties/[id]`
+  (detail bez kopírování inzerátu: parametry, zdroj, datum přidání a poslední
+  kontroly, úplnost, poznámky, tlačítko na původní inzerát, vývoj ceny,
+  prázdné místo pro budoucí AI analýzu), `/properties/[id]/edit`
+- ✅ Karta nabídky: náhled/placeholder, dispozice, typ, lokalita, cena, cena/m²,
+  výměra, zdroj, stav, úplnost dat + tlačítka Detail / Původní inzerát
+  (`target="_blank" rel="noopener noreferrer"`) / Uložit / Porovnat
+- ✅ Pravidla náhledů: obrázek jen z povolených metadat (`allowPreviewImages`)
+  nebo po ručním vložení vlastníkem (`imageUsageAllowed`); jinak placeholder
+  podle typu nemovitosti; externí obrázky se lokálně neukládají
+- ✅ Cena za m² se počítá automaticky (živě ve formuláři i při uložení)
+- ✅ Úplnost dat z 8 klíčových polí → vysoká (≥75 %) / střední (≥50 %) / nízká
+- ✅ Stav nabídky měnitelný uživatelem (select na detailu), mazání s potvrzením
+- ✅ Oprávnění: nabídku vidí a upravuje jen ten, kdo ji přidal (+ admin); cizí
+  detail vrací 404
+- ✅ Admin správa zdrojů `/admin/sources`: název, doména, logo, aktivní stav,
+  typ integrace, povolení náhledů, povolení metadat; vytvoření/úprava/smazání
+  (smazání jen bez navázaných nabídek)
+- ✅ Seed: Sreality.cz, Bezrealitky.cz, Reality.iDNES.cz, Reality.cz, RE/MAX,
+  M&M Reality, Jiný zdroj (obecný) + České reality z dřívějška
+- ✅ Ověření: Playwright E2E (30 kontrol) — URL import s lokálním OG testovacím
+  serverem (titulek ✓, canonical ✓, obrázek nepřevzat ✓), manuální formulář,
+  validace, externí odkazy (`noopener noreferrer` ✓), výpočet ceny/m²
+  (5 000 000 / 50 m² → 100 000 Kč/m² ✓), úplnost (8/8 vysoká, 2/8 nízká ✓),
+  změna stavu, uložit/porovnat, oprávnění (cizí nabídka 404, admin sekce
+  nedostupná), admin CRUD zdrojů; hodnoty ověřeny i přímo v DB;
+  `tsc` ✓, `eslint` ✓, `next build` ✓, `prisma migrate status` ✓
 
 ## Co zůstává (další fáze)
 
-- Přidávání nabídek uživatelem (vložení URL, parsování metadat) — tlačítko připraveno
-- Detail nemovitosti, seznam uložených nemovitostí, UI porovnání
-- AI integrace (výpočet zhody nabídky s profilem) — záměrně vynecháno
-- Platby / předplatné — záměrně vynecháno (limity plánů už jsou připravené)
-- Automatický import z realitních portálů — záměrně vynecháno
-- Vynucování `UsageLimit` (AI analýzy, uložené nemovitosti)
-- i18n (UI je česky natvrdo)
-- Automatizované testy v CI (E2E skript zatím spouštěn ručně)
-- Reset hesla, verifikace e-mailu, OAuth provideři
+- AI analýza nabídky vůči profilu hledání (detail už má vyhrazené místo)
+- Stránka porovnání (položky se už ukládají do `PropertyComparison`)
+- Seznam uložených nemovitostí jako samostatný pohled
+- Automatická kontrola stavu nabídek / cen (lastCheckedAt se zatím mění ručně)
+- Platby / předplatné; vynucování `UsageLimit`
+- Strukturované integrace portálů (feed/API) v adaptérech — nyní jen OG placeholdery
+- i18n, CI pro E2E, reset hesla, OAuth
 
 ## Hlavní architektonická rozhodnutí
 
-1. **App Router + server actions** pro mutace; server components čtou data přímo
-   přes Prismu. Auth.js v5 s JWT (role v tokenu), edge-safe middleware.
-2. **Průvodce jako klientský stav + server autosave**: každý krok má vlastní Zod
-   schéma (sdílené klientem i serverem); při přechodu mezi kroky se celý stav
-   ukládá do `OnboardingDraft` (JSON). Dokončení průvodce draft validuje celým
-   schématem, vytvoří profil a draft smaže. Úprava profilu používá stejný průvodce,
-   jen bez draftů (data se předvyplní z DB a uloží najednou).
-3. **Kritéria jako `Preference` řádky** (key/value/priority/isRequired) místo sloupců —
-   katalog kritérií žije v kódu (`src/lib/search-criteria.ts`), takže přidání kritéria
-   nevyžaduje migraci. Váhy: nezbytné 10 (+`isRequired`), velmi důležité 7, důležité 4,
-   výhoda 2, nepodstatné 0.
-4. **`Property` vs. `PropertyListing`** — kanonická nemovitost vs. inzeráty na portálech.
-5. **Limity plánů konfigurovatelné** v `src/config/plans.ts`, vynucované výhradně
-   v server actions (`completeOnboarding`, `setActive`, `duplicate`) — UI je jen zobrazuje.
-6. **Peněžní hodnoty `Decimal(12,2)`**; pro klientské komponenty se konvertují na
-   čísla přes `toPlainSearchProfile` (Decimal není serializovatelný do client props).
+1. **`Property` vs. `PropertyListing`** — kanonická nemovitost odděleně od inzerátů;
+   nabídka přidaná uživatelem vytváří obojí, `addedByUserId` určuje vlastníka záznamu.
+2. **Modulární adaptéry zdrojů** s jednotným rozhraním (`matches(hostname)`,
+   `fetchMetadata(url)`); registry řadí specifické adaptéry před generický fallback.
+   Nové portály = nový soubor, žádné zásahy do akcí.
+3. **Právní ohleduplnost jako datový model**: per-zdroj `allowPreviewImages` /
+   `allowMetadataImport` řízené adminem, per-nabídka `imageUsageAllowed` zmrazené
+   v okamžiku uložení; UI nikdy nezobrazí nepovolený obrázek a nekopíruje inzeráty.
+4. **Úplnost dat a cena/m² se počítají na serveru při každém uložení**
+   (`src/lib/listing-utils.ts`) — UI je jen zobrazuje; změna ceny zapisuje záznam
+   do `PriceHistory`.
+5. **Server actions + Zod** pro všechny mutace; vlastnictví se ověřuje v akcích
+   (`findEditableListing`), ne v UI.
 
 ## Databázový model
 
-Entity: `User`, `UserProfile`, `SearchProfile`, `Preference`, `OnboardingDraft`,
-`Region`, `Property`, `PropertyListing`, `ListingSource`, `PriceHistory`,
-`SavedProperty`, `PropertyComparison`, `PropertyComparisonItem`, `AIAnalysis`,
-`RiskFlag`, `Subscription`, `UsageLimit` (17 tabulek).
+17 tabulek — beze změny počtu; ve fázi 3 rozšířeno:
+`PropertyListing` (+`addedByUserId`, `monthlyCosts`, `userNote`),
+`Property` (+`hasLoggia`), `ListingStatus` → ACTIVE/INACTIVE/UNKNOWN/REMOVED.
 
-`SearchProfile` (jádro této fáze): účel (`SearchPurpose`), 11 rozpočtových polí
-(Decimal, Kč), `propertyTypes DesiredPropertyType[]`, `dispositions Disposition[]`,
-výměry/pokoje, lokalita (kraje, města, městské části, vyloučené, dojíždění,
-`TransportMode`), `isActive`, `isDefault`, 1—N `Preference`
-(key/value, priority 0–10, `isRequired`).
-
-`OnboardingDraft`: `userId` (unique), `currentStep`, `data Json`.
-`Region`: název + kód kraje, seedováno 14 českých krajů.
-
-Enumy: `Role`, `SearchPurpose` (8), `DesiredPropertyType` (12), `TransportMode` (4),
-`PropertyType`, `Disposition`, `OwnershipType`, `PropertyCondition`, `EnergyClass`,
-`ConstructionType`, `SellerType`, `ListingStatus`, `IntegrationType`, `RiskSeverity`,
-`SubscriptionPlan`, `SubscriptionStatus`.
+Klíčové relace: `User 1—N PropertyListing (addedBy)`,
+`Property 1—N PropertyListing N—1 ListingSource`, `PropertyListing 1—N PriceHistory`,
+`User 1—N SavedProperty / PropertyComparison(Item)`.
 
 ## Příkazy na spuštění projektu
 
@@ -116,23 +105,24 @@ Enumy: `Role`, `SearchPurpose` (8), `DesiredPropertyType` (12), `TransportMode` 
 npm install
 cp .env.example .env        # nastavte DATABASE_URL a AUTH_SECRET
 npm run db:migrate          # migrace + generování klienta
-npm run db:seed             # vývojová data (kraje, uživatelé, ukázkový profil)
+npm run db:seed             # vývojová data (kraje, zdroje, uživatelé, ukázky)
 npm run dev                 # http://localhost:3000
 ```
 
 Testovací účty: `admin@realitycheck.local` / `admin1234` (ADMIN),
-`demo@realitycheck.local` / `demo1234` (USER, má vyplněný profil hledání).
+`demo@realitycheck.local` / `demo1234` (USER — má profil hledání i 2 nabídky).
 
 Kontroly: `npm run typecheck && npm run lint && npm run build`.
 
 ## Známá omezení
 
-- Bez AI analýzy, plateb a automatického importu portálů (záměr).
-- Draft se ukládá při přechodu mezi kroky — rozepsané hodnoty uvnitř právě
-  otevřeného kroku se do draftu zapíší až po kliknutí na Pokračovat/Zpět.
-- Jeden draft na uživatele; úprava existujícího profilu drafty nepoužívá
-  (uloží se až po dokončení průvodce).
-- „Přidat nabídku" na dashboardu je zatím neaktivní tlačítko (další fáze).
-- `UsageLimit`/`Subscription` se vynucují jen pro počty profilů, ne pro AI analýzy.
-- UI česky natvrdo; `language` se zatím jen ukládá.
-- E2E test (Playwright) běží ručně, není součástí CI.
+- Adaptéry portálů zatím čtou jen Open Graph metadata — strukturovaný import
+  (ceny, parametry) vyžaduje dohody/feed a přijde později.
+- Fetch metadat následuje URL zadanou uživatelem (jen http/https); ochrana proti
+  SSRF na privátní adresy zatím není implementovaná — doplnit před produkcí.
+- Nabídky jsou privátní pro uživatele, který je přidal; deduplikace stejné
+  nemovitosti mezi uživateli zatím neprobíhá (unikátnost jen na externí id zdroje).
+- „Porovnat“ ukládá do výchozího porovnání; UI stránka porovnání přijde v další fázi.
+- `lastCheckedAt` se aktualizuje jen při ruční změně — bez automatického ověřování.
+- E2E test (Playwright) se spouští ručně, není v CI.
+- Bez AI volání a plateb (záměr této fáze).

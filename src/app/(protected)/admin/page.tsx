@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Administrace",
@@ -92,9 +101,18 @@ export default async function AdminPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Zdroje inzerátů</CardTitle>
-          <CardDescription>Realitní portály evidované v systému.</CardDescription>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle>Zdroje inzerátů</CardTitle>
+            <CardDescription className="mt-1">
+              Realitní portály evidované v systému.
+            </CardDescription>
+          </div>
+          <Link href="/admin/sources">
+            <Button variant="outline" size="sm">
+              Spravovat zdroje
+            </Button>
+          </Link>
         </CardHeader>
         <CardContent>
           {sources.length === 0 ? (

@@ -127,11 +127,9 @@ enum SellerType {
 
 enum ListingStatus {
   ACTIVE
-  RESERVED
-  SOLD
-  REMOVED
-  EXPIRED
+  INACTIVE
   UNKNOWN
+  REMOVED
 }
 
 enum IntegrationType {
@@ -187,6 +185,7 @@ model User {
   subscriptions       Subscription[]
   usageLimits         UsageLimit[]
   onboardingDraft     OnboardingDraft?
+  addedListings       PropertyListing[]    @relation("AddedListings")
 
   @@map("users")
 }
@@ -322,6 +321,7 @@ model Property {
   totalFloors        Int?
   hasElevator        Boolean?
   hasBalcony         Boolean?
+  hasLoggia          Boolean?
   hasTerrace         Boolean?
   hasGarden          Boolean?
   hasCellar          Boolean?
@@ -349,6 +349,8 @@ model PropertyListing {
   id                    String        @id @default(cuid())
   propertyId            String
   sourceId              String
+  /// user who added this listing to the app (null = imported by the system)
+  addedByUserId         String?
   /// listing id on the source portal
   externalId            String?
   sourceUrl             String
@@ -360,6 +362,10 @@ model PropertyListing {
   commissionIncluded    Boolean?
   sellerType            SellerType    @default(UNKNOWN)
   agencyName            String?
+  /// estimated monthly running costs in CZK (fund of repairs, utilities, ...)
+  monthlyCosts          Decimal?      @db.Decimal(12, 2)
+  /// private note of the user who added the listing
+  userNote              String?
   firstSeenAt           DateTime      @default(now())
   lastCheckedAt         DateTime      @default(now())
   listingStatus         ListingStatus @default(ACTIVE)
@@ -372,10 +378,12 @@ model PropertyListing {
 
   property     Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   source       ListingSource  @relation(fields: [sourceId], references: [id])
+  addedByUser  User?          @relation("AddedListings", fields: [addedByUserId], references: [id], onDelete: SetNull)
   priceHistory PriceHistory[]
 
   @@unique([sourceId, externalId])
   @@index([propertyId])
+  @@index([addedByUserId])
   @@map("property_listings")
 }
 

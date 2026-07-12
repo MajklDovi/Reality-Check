@@ -57,19 +57,22 @@ src/
     page.tsx           # veřejná landing page
     login/ register/   # veřejné auth stránky
     (protected)/       # skupina chráněných stránek (layout ověřuje session)
-      dashboard/       # přehled: aktivní profil, statistiky, uložené nemovitosti
+      dashboard/       # přehled: aktivní profil, statistiky, sledované nabídky
       onboarding/      # 8krokový průvodce vytvořením profilu hledání
       search-profiles/ # správa profilů: seznam, new, [id], [id]/edit
+      properties/      # externí nabídky: seznam, new (URL/ručně), [id], [id]/edit
       profile/ settings/
-      admin/           # vlastní layout ověřuje roli ADMIN
+      admin/           # vlastní layout ověřuje roli ADMIN; sources/ = správa zdrojů
     api/auth/[...nextauth]/  # Auth.js route handler
-  actions/             # server actions (auth, profil, search-profile) — mutace dat
+  actions/             # server actions (auth, profil, search-profile, listing, sources)
   components/
     ui/                # znovupoužitelné komponenty (Button, Input, Modal, Progress, TagInput, …)
     layout/            # Header, Footer, UserMenu, MobileNav
     auth/ profile/ settings/    # formuláře k jednotlivým doménám
     search-profile-wizard/      # onboarding průvodce + jednotlivé kroky
     search-profiles/            # akce správy profilů (duplikace, aktivace, smazání)
+    listings/                   # karta nabídky, formulář, URL import, náhled/placeholder
+    admin/                      # správa zdrojů inzerátů
   config/
     plans.ts           # konfigurovatelné limity předplatných (počet profilů)
   lib/
@@ -78,6 +81,9 @@ src/
     prisma.ts          # PrismaClient singleton (pg driver adapter)
     search-criteria.ts # katalog kritérií (vlastnosti, životní styl) + české popisky
     search-profile-utils.ts  # kompletnost profilu, mapování wizard ↔ DB, formátování Kč
+    listing-utils.ts   # úplnost dat nabídky, cena/m², pravidla náhledových obrázků
+    property-labels.ts # české popisky enumů nemovitostí
+    source-adapters/   # modulární adaptéry zdrojů (generic OG, Sreality, Bezrealitky, …)
     validations/       # Zod schémata (auth, profil, kroky průvodce)
   generated/prisma/    # generovaný Prisma klient (mimo git)
   middleware.ts        # ochrana privátních tras + admin sekce
@@ -100,6 +106,27 @@ Správa profilů na `/search-profiles`: vytvoření, úprava (stejný průvodce 
 daty), duplikace, aktivace/deaktivace, výchozí profil, smazání. Limity počtu profilů jsou
 konfigurovatelné per plán v `src/config/plans.ts` a vynucují se v server actions (FREE:
 1 aktivní profil).
+
+### Externí nabídky
+
+Nabídku lze přidat vložením URL inzerátu, nebo ručně (`/properties/new`). Při vložení
+URL systém identifikuje portál podle domény (`ListingSource`), a pokud to zdroj povoluje
+(`allowMetadataImport`), načte přes modulární adaptér základní Open Graph metadata —
+titulek, canonical URL a náhledový obrázek (jen při `allowPreviewImages`). Jde o jediný
+zdvořilý požadavek s timeoutem a limitem velikosti, žádný agresivní scraping. Načtená
+data uživatel zkontroluje a doplní ve formuláři.
+
+Aplikace nikdy nekopíruje celé inzeráty — ukládá jen základní parametry, vlastní
+poznámky a odkaz na původní zdroj (otevíraný s `noopener noreferrer`). Náhledový
+obrázek se zobrazuje pouze z povolených metadat nebo po ručním vložení uživatelem;
+jinak se ukazuje neutrální placeholder podle typu nemovitosti. Externí obrázky se
+neukládají lokálně.
+
+Cena za m² se dopočítává automaticky; úplnost dat (0–100 %) se počítá z 8 klíčových
+polí (cena, výměra, lokalita, typ, dispozice, vlastnictví, stav, zdrojový odkaz) a
+zobrazuje se jako vysoká / střední / nízká. Stavy nabídky: ACTIVE, INACTIVE, UNKNOWN,
+REMOVED — uživatel je může měnit ručně. Správa zdrojů (domény, integrace, povolení
+náhledů a metadat) je v administraci na `/admin/sources`.
 
 ### Klíčová rozhodnutí
 

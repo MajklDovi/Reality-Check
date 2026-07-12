@@ -13,6 +13,7 @@ export interface UserMenuProps {
 
 const menuLinks = [
   { href: "/dashboard", label: "Přehled" },
+  { href: "/properties", label: "Nabídky" },
   { href: "/search-profiles", label: "Profily hledání" },
   { href: "/profile", label: "Můj profil" },
   { href: "/settings", label: "Nastavení" },

@@ -12,6 +12,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
   "/onboarding",
   "/search-profiles",
+  "/properties",
 ];
 
 /** Routes that a logged-in user should not see again. */

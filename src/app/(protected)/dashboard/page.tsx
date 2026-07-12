@@ -28,10 +28,10 @@ export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;
 
-  const [savedCount, comparisonCount, analysisCount, profileCount, activeProfile, draft] =
+  const [listingCount, savedCount, analysisCount, profileCount, activeProfile, draft] =
     await Promise.all([
+      prisma.propertyListing.count({ where: { addedByUserId: userId } }),
       prisma.savedProperty.count({ where: { userId } }),
-      prisma.propertyComparison.count({ where: { userId } }),
       prisma.aIAnalysis.count({ where: { userId } }),
       prisma.searchProfile.count({ where: { userId } }),
       prisma.searchProfile.findFirst({
@@ -43,8 +43,8 @@ export default async function DashboardPage() {
     ]);
 
   const stats = [
+    { label: "Sledované nabídky", value: listingCount },
     { label: "Uložené nemovitosti", value: savedCount },
-    { label: "Porovnání", value: comparisonCount },
     { label: "AI analýzy", value: analysisCount },
     { label: "Profily hledání", value: profileCount },
   ];
@@ -171,28 +171,41 @@ export default async function DashboardPage() {
         />
       )}
 
-      {/* Saved properties */}
+      {/* Listings */}
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Uložené nemovitosti</CardTitle>
+            <CardTitle>Sledované nabídky</CardTitle>
             <CardDescription className="mt-1">
-              Nabídky, které jste si uložili k porovnání.
+              Nabídky z realitních portálů, které jste přidali k porovnání.
             </CardDescription>
           </div>
-          <Button size="sm" disabled title="Přidávání nabídek bude dostupné v další fázi">
-            + Přidat nabídku
-          </Button>
+          <Link href="/properties/new">
+            <Button size="sm">+ Přidat nabídku</Button>
+          </Link>
         </CardHeader>
         <CardContent>
-          {savedCount === 0 ? (
+          {listingCount === 0 ? (
             <EmptyState
-              title="Žádné uložené nemovitosti"
-              description="Vkládání odkazů na nabídky z realitních portálů připravujeme — dostupné bude v další fázi."
+              title="Zatím nesledujete žádnou nabídku"
+              description="Vložte odkaz na inzerát z realitního portálu, nebo nabídku zadejte ručně — údaje pak porovnáme s vaším profilem hledání."
+              action={
+                <Link href="/properties/new">
+                  <Button>Přidat první nabídku</Button>
+                </Link>
+              }
             />
           ) : (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Máte uloženo {savedCount} nemovitostí. Detailní přehled bude dostupný v další fázi.
+              Sledujete {listingCount}{" "}
+              {listingCount === 1 ? "nabídku" : listingCount < 5 ? "nabídky" : "nabídek"} —{" "}
+              <Link
+                href="/properties"
+                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                zobrazit všechny
+              </Link>
+              .
             </p>
           )}
         </CardContent>
