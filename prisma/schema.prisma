@@ -21,9 +21,36 @@ enum Role {
 
 enum SearchPurpose {
   OWN_LIVING
-  INVESTMENT
+  FAMILY_LIVING
+  INVESTMENT_LONG_TERM_RENT
+  INVESTMENT_SHORT_TERM_RENT
   RECREATION
-  OTHER
+  RENOVATION_PROJECT
+  RESALE
+  FOR_RELATIVES
+}
+
+/// Property categories a user can search for (multi-select on a search profile).
+enum DesiredPropertyType {
+  APARTMENT
+  FAMILY_HOUSE
+  TOWNHOUSE
+  VILLA
+  COTTAGE
+  RECREATIONAL_PROPERTY
+  BUILDING_PLOT
+  COOPERATIVE_APARTMENT
+  ATELIER
+  NON_RESIDENTIAL_UNIT
+  NEW_BUILD
+  PRE_RENOVATION
+}
+
+enum TransportMode {
+  CAR
+  PUBLIC_TRANSPORT
+  BICYCLE
+  WALKING
 }
 
 enum PropertyType {
@@ -159,6 +186,7 @@ model User {
   aiAnalyses          AIAnalysis[]
   subscriptions       Subscription[]
   usageLimits         UsageLimit[]
+  onboardingDraft     OnboardingDraft?
 
   @@map("users")
 }
@@ -182,25 +210,45 @@ model UserProfile {
 
 /// A named search a user is running (e.g. "Byt v Brně pro rodinu").
 model SearchProfile {
-  id                    String        @id @default(cuid())
-  userId                String
-  name                  String
-  purpose               SearchPurpose @default(OWN_LIVING)
-  minimumPrice          Decimal?      @db.Decimal(12, 2)
-  idealPrice            Decimal?      @db.Decimal(12, 2)
-  maximumPrice          Decimal?      @db.Decimal(12, 2)
-  minimumArea           Float?
-  maximumArea           Float?
-  minimumRooms          Int?
-  maximumRooms          Int?
-  preferredRegions      String[]      @default([])
-  preferredCities       String[]      @default([])
-  excludedLocations     String[]      @default([])
+  id      String        @id @default(cuid())
+  userId  String
+  name    String
+  purpose SearchPurpose @default(OWN_LIVING)
+
+  // Budget (all amounts in CZK)
+  minimumPrice            Decimal? @db.Decimal(12, 2)
+  idealPrice              Decimal? @db.Decimal(12, 2)
+  maximumPrice            Decimal? @db.Decimal(12, 2)
+  ownSavings              Decimal? @db.Decimal(12, 2)
+  plannedMortgage         Decimal? @db.Decimal(12, 2)
+  netMonthlyIncome        Decimal? @db.Decimal(12, 2)
+  existingMonthlyPayments Decimal? @db.Decimal(12, 2)
+  maximumMonthlyPayment   Decimal? @db.Decimal(12, 2)
+  financialReserve        Decimal? @db.Decimal(12, 2)
+  renovationBudget        Decimal? @db.Decimal(12, 2)
+  furnishingBudget        Decimal? @db.Decimal(12, 2)
+
+  // What to look for
+  propertyTypes DesiredPropertyType[] @default([])
+  dispositions  Disposition[]         @default([])
+  minimumArea   Float?
+  maximumArea   Float?
+  minimumRooms  Int?
+  maximumRooms  Int?
+
+  // Location
+  preferredRegions      String[]       @default([])
+  preferredCities       String[]       @default([])
+  preferredCityParts    String[]       @default([])
+  excludedLocations     String[]       @default([])
   maximumCommuteMinutes Int?
   commuteDestination    String?
-  isActive              Boolean       @default(true)
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  transportMode         TransportMode?
+
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   preferences Preference[]
@@ -216,14 +264,38 @@ model Preference {
   searchProfileId String
   key             String
   value           String
-  /// 1 (nice to have) .. 5 (very important)
-  priority        Int     @default(3)
+  /// weight 0..10 (0 = irrelevant, 2 = nice to have, 4 = important, 7 = very important, 10 = must have)
+  priority        Int     @default(4)
   isRequired      Boolean @default(false)
 
   searchProfile SearchProfile @relation(fields: [searchProfileId], references: [id], onDelete: Cascade)
 
   @@unique([searchProfileId, key])
   @@map("preferences")
+}
+
+/// Work-in-progress onboarding wizard state — one draft per user.
+model OnboardingDraft {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  currentStep Int      @default(0)
+  data        Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_drafts")
+}
+
+/// Czech administrative region (kraj) — seeded reference data.
+model Region {
+  id        String @id @default(cuid())
+  name      String @unique
+  code      String @unique
+  sortOrder Int    @default(0)
+
+  @@map("regions")
 }
 
 // ---------------------------------------------------------------------------

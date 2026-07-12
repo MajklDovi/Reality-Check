@@ -5,7 +5,14 @@ import { authConfig } from "@/lib/auth.config";
 const { auth } = NextAuth(authConfig);
 
 /** Routes that require an authenticated user. */
-const PROTECTED_PREFIXES = ["/dashboard", "/profile", "/settings", "/admin"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/profile",
+  "/settings",
+  "/admin",
+  "/onboarding",
+  "/search-profiles",
+];
 
 /** Routes that a logged-in user should not see again. */
 const AUTH_PREFIXES = ["/login", "/register"];

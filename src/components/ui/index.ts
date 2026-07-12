@@ -11,3 +11,5 @@ export { Tabs, type TabsProps, type TabItem } from "./tabs";
 export { Alert, type AlertProps } from "./alert";
 export { EmptyState, type EmptyStateProps } from "./empty-state";
 export { LoadingState, Spinner, type LoadingStateProps } from "./loading-state";
+export { Progress, type ProgressProps } from "./progress";
+export { TagInput, type TagInputProps } from "./tag-input";

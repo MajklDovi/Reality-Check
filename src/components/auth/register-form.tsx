@@ -24,7 +24,7 @@ export function RegisterForm() {
     setServerError(null);
     const result = await registerAction(data);
     if (result.success) {
-      router.push("/dashboard");
+      router.push("/onboarding");
       router.refresh();
     } else {
       setServerError(result.error);

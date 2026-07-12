@@ -48,8 +48,8 @@ npm run dev            # http://localhost:3000
 
 ```
 prisma/
-  schema.prisma        # kompletní databázový model (15 entit + enumy)
-  seed.ts              # vývojová data
+  schema.prisma        # kompletní databázový model (17 entit + enumy)
+  seed.ts              # vývojová data (uživatelé, kraje, zdroje, ukázkový profil)
   migrations/          # SQL migrace
 prisma.config.ts       # Prisma 7 konfigurace (datasource URL, seed příkaz)
 src/
@@ -57,23 +57,49 @@ src/
     page.tsx           # veřejná landing page
     login/ register/   # veřejné auth stránky
     (protected)/       # skupina chráněných stránek (layout ověřuje session)
-      dashboard/ profile/ settings/
+      dashboard/       # přehled: aktivní profil, statistiky, uložené nemovitosti
+      onboarding/      # 8krokový průvodce vytvořením profilu hledání
+      search-profiles/ # správa profilů: seznam, new, [id], [id]/edit
+      profile/ settings/
       admin/           # vlastní layout ověřuje roli ADMIN
     api/auth/[...nextauth]/  # Auth.js route handler
-  actions/             # server actions (auth, profil) — mutace dat
+  actions/             # server actions (auth, profil, search-profile) — mutace dat
   components/
-    ui/                # znovupoužitelné komponenty (Button, Input, Modal, …)
+    ui/                # znovupoužitelné komponenty (Button, Input, Modal, Progress, TagInput, …)
     layout/            # Header, Footer, UserMenu, MobileNav
-    auth/ profile/ settings/  # formuláře k jednotlivým doménám
+    auth/ profile/ settings/    # formuláře k jednotlivým doménám
+    search-profile-wizard/      # onboarding průvodce + jednotlivé kroky
+    search-profiles/            # akce správy profilů (duplikace, aktivace, smazání)
+  config/
+    plans.ts           # konfigurovatelné limity předplatných (počet profilů)
   lib/
     auth.ts            # NextAuth konfigurace s Credentials providerem
     auth.config.ts     # edge-safe část konfigurace (sdílená s middlewarem)
     prisma.ts          # PrismaClient singleton (pg driver adapter)
-    validations/       # Zod schémata
+    search-criteria.ts # katalog kritérií (vlastnosti, životní styl) + české popisky
+    search-profile-utils.ts  # kompletnost profilu, mapování wizard ↔ DB, formátování Kč
+    validations/       # Zod schémata (auth, profil, kroky průvodce)
   generated/prisma/    # generovaný Prisma klient (mimo git)
   middleware.ts        # ochrana privátních tras + admin sekce
   types/next-auth.d.ts # rozšíření session o id a roli
 ```
+
+### Onboarding a profily hledání
+
+Po registraci je uživatel přesměrován na `/onboarding` — 8krokového průvodce
+(účel → rozpočet → typ nemovitosti → lokalita → velikost a dispozice → vlastnosti →
+životní styl → priority). Průvodce průběžně ukládá rozpracovaná data do
+`OnboardingDraft`, takže po odchodu lze pokračovat tam, kde uživatel skončil.
+Každý krok je validován Zodem (klient i server sdílejí stejná schémata).
+
+Kritéria z kroků 6–7 se ukládají jako `Preference` řádky; v kroku 8 jim uživatel
+přiřazuje úrovně: nezbytné (`isRequired`, váha 10), velmi důležité (7), důležité (4),
+výhoda navíc (2), nepodstatné (0).
+
+Správa profilů na `/search-profiles`: vytvoření, úprava (stejný průvodce s předvyplněnými
+daty), duplikace, aktivace/deaktivace, výchozí profil, smazání. Limity počtu profilů jsou
+konfigurovatelné per plán v `src/config/plans.ts` a vynucují se v server actions (FREE:
+1 aktivní profil).
 
 ### Klíčová rozhodnutí
 

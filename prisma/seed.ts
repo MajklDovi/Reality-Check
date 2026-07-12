@@ -6,8 +6,37 @@ import { PrismaClient } from "../src/generated/prisma/client";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
+const CZECH_REGIONS: { name: string; code: string }[] = [
+  { name: "Hlavní město Praha", code: "PHA" },
+  { name: "Středočeský kraj", code: "STC" },
+  { name: "Jihočeský kraj", code: "JHC" },
+  { name: "Plzeňský kraj", code: "PLK" },
+  { name: "Karlovarský kraj", code: "KVK" },
+  { name: "Ústecký kraj", code: "ULK" },
+  { name: "Liberecký kraj", code: "LBK" },
+  { name: "Královéhradecký kraj", code: "HKK" },
+  { name: "Pardubický kraj", code: "PAK" },
+  { name: "Kraj Vysočina", code: "VYS" },
+  { name: "Jihomoravský kraj", code: "JHM" },
+  { name: "Olomoucký kraj", code: "OLK" },
+  { name: "Zlínský kraj", code: "ZLK" },
+  { name: "Moravskoslezský kraj", code: "MSK" },
+];
+
 async function main() {
   console.log("🌱 Seeding database…");
+
+  // --- Czech regions (reference data) --------------------------------------
+  await Promise.all(
+    CZECH_REGIONS.map((region, index) =>
+      prisma.region.upsert({
+        where: { code: region.code },
+        update: { name: region.name, sortOrder: index },
+        create: { ...region, sortOrder: index },
+      })
+    )
+  );
+  console.log(`  ✓ ${CZECH_REGIONS.length} Czech regions`);
 
   // --- Listing sources ---------------------------------------------------
   const sourcesData = [
@@ -75,41 +104,82 @@ async function main() {
     where: { userId: demo.id, name: "Byt pro rodinu v Brně" },
   });
 
-  const searchProfile =
-    existingProfile ??
-    (await prisma.searchProfile.create({
-      data: {
-        userId: demo.id,
-        name: "Byt pro rodinu v Brně",
-        purpose: "OWN_LIVING",
-        minimumPrice: 4500000,
-        idealPrice: 6000000,
-        maximumPrice: 7500000,
-        minimumArea: 65,
-        maximumArea: 95,
-        minimumRooms: 3,
-        maximumRooms: 4,
-        preferredRegions: ["Jihomoravský kraj"],
-        preferredCities: ["Brno"],
-        excludedLocations: ["Brno-jih"],
-        maximumCommuteMinutes: 30,
-        commuteDestination: "Brno, Veveří",
-        isActive: true,
-        preferences: {
-          create: [
-            { key: "balcony", value: "true", priority: 4, isRequired: false },
-            { key: "elevator", value: "true", priority: 3, isRequired: false },
-            { key: "parking", value: "true", priority: 5, isRequired: true },
-            { key: "quiet_location", value: "true", priority: 4, isRequired: false },
-          ],
+  const profileData = {
+    userId: demo.id,
+    name: "Byt pro rodinu v Brně",
+    purpose: "FAMILY_LIVING" as const,
+    minimumPrice: 4500000,
+    idealPrice: 6000000,
+    maximumPrice: 7500000,
+    ownSavings: 1500000,
+    plannedMortgage: 5500000,
+    netMonthlyIncome: 68000,
+    existingMonthlyPayments: 4000,
+    maximumMonthlyPayment: 24000,
+    financialReserve: 300000,
+    renovationBudget: 400000,
+    furnishingBudget: 150000,
+    propertyTypes: ["APARTMENT", "NEW_BUILD"] as const,
+    dispositions: ["D_3_KK", "D_3_1", "D_4_KK"] as const,
+    minimumArea: 65,
+    maximumArea: 95,
+    minimumRooms: 3,
+    maximumRooms: 4,
+    preferredRegions: ["Jihomoravský kraj"],
+    preferredCities: ["Brno"],
+    preferredCityParts: ["Královo Pole", "Žabovřesky"],
+    excludedLocations: ["Brno-jih"],
+    maximumCommuteMinutes: 30,
+    commuteDestination: "Brno, Veveří",
+    transportMode: "PUBLIC_TRANSPORT" as const,
+    isActive: true,
+    isDefault: true,
+  };
+  const profilePreferences = [
+    { key: "parking", value: "true", priority: 10, isRequired: true },
+    { key: "balcony", value: "true", priority: 7, isRequired: false },
+    { key: "elevator", value: "true", priority: 4, isRequired: false },
+    { key: "ownership", value: "PERSONAL", priority: 7, isRequired: false },
+    { key: "quiet", value: "true", priority: 4, isRequired: false },
+    { key: "schools", value: "true", priority: 7, isRequired: false },
+    { key: "public_transport", value: "true", priority: 4, isRequired: false },
+  ];
+
+  const searchProfile = existingProfile
+    ? await prisma.searchProfile.update({
+        where: { id: existingProfile.id },
+        data: {
+          ...profileData,
+          propertyTypes: [...profileData.propertyTypes],
+          dispositions: [...profileData.dispositions],
+          preferences: {
+            deleteMany: {},
+            create: profilePreferences,
+          },
         },
-      },
-    }));
+      })
+    : await prisma.searchProfile.create({
+        data: {
+          ...profileData,
+          propertyTypes: [...profileData.propertyTypes],
+          dispositions: [...profileData.dispositions],
+          preferences: { create: profilePreferences },
+        },
+      });
   console.log("  ✓ search profile with preferences");
 
   // --- Properties + listings ----------------------------------------------
   const sreality = sources.find((s) => s.domain === "sreality.cz")!;
   const bezrealitky = sources.find((s) => s.domain === "bezrealitky.cz")!;
+
+  const existingListing = await prisma.propertyListing.findUnique({
+    where: { sourceId_externalId: { sourceId: sreality.id, externalId: "demo-1001" } },
+  });
+  if (existingListing) {
+    console.log("  ✓ demo properties already seeded — skipping");
+    console.log("✅ Seed finished.");
+    return;
+  }
 
   const property1 = await prisma.property.create({
     data: {

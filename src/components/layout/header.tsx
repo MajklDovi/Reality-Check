@@ -11,6 +11,7 @@ const publicLinks = [
 
 const appLinks = [
   { href: "/dashboard", label: "Přehled" },
+  { href: "/search-profiles", label: "Profily hledání" },
   { href: "/profile", label: "Můj profil" },
 ];
 
