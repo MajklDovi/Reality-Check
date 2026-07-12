@@ -1,0 +1,469 @@
+// Reality Check — Prisma schema
+// PostgreSQL database model for the Czech real-estate comparison SaaS.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SearchPurpose {
+  OWN_LIVING
+  INVESTMENT
+  RECREATION
+  OTHER
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+  COMMERCIAL
+  GARAGE
+  OTHER
+}
+
+/// Czech apartment dispositions (1+kk, 2+1, ...)
+enum Disposition {
+  D_1_KK
+  D_1_1
+  D_2_KK
+  D_2_1
+  D_3_KK
+  D_3_1
+  D_4_KK
+  D_4_1
+  D_5_KK
+  D_5_1
+  D_6_AND_MORE
+  ATYPICAL
+  UNKNOWN
+}
+
+enum OwnershipType {
+  PERSONAL
+  COOPERATIVE
+  MUNICIPAL
+  OTHER
+  UNKNOWN
+}
+
+enum PropertyCondition {
+  NEW_BUILD
+  EXCELLENT
+  GOOD
+  NEEDS_RENOVATION
+  UNDER_CONSTRUCTION
+  DEMOLITION
+  UNKNOWN
+}
+
+enum EnergyClass {
+  A
+  B
+  C
+  D
+  E
+  F
+  G
+  UNKNOWN
+}
+
+enum ConstructionType {
+  BRICK
+  PANEL
+  WOOD
+  SKELETON
+  MIXED
+  OTHER
+  UNKNOWN
+}
+
+enum SellerType {
+  AGENCY
+  PRIVATE
+  DEVELOPER
+  UNKNOWN
+}
+
+enum ListingStatus {
+  ACTIVE
+  RESERVED
+  SOLD
+  REMOVED
+  EXPIRED
+  UNKNOWN
+}
+
+enum IntegrationType {
+  MANUAL_LINK
+  METADATA_IMPORT
+  FEED
+  API
+}
+
+enum RiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// Users & profiles
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  /// bcrypt hash for credentials auth; null when an external provider is used
+  passwordHash String?
+  /// identifier from an external auth provider (e.g. OAuth subject)
+  externalAuthId String? @unique
+  role         Role     @default(USER)
+  language     String   @default("cs")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile             UserProfile?
+  searchProfiles      SearchProfile[]
+  savedProperties     SavedProperty[]
+  propertyComparisons PropertyComparison[]
+  aiAnalyses          AIAnalysis[]
+  subscriptions       Subscription[]
+  usageLimits         UsageLimit[]
+
+  @@map("users")
+}
+
+/// Financial capabilities of a user — one per user.
+model UserProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  /// monthly net household income in CZK
+  householdIncome       Decimal? @db.Decimal(12, 2)
+  availableSavings      Decimal? @db.Decimal(12, 2)
+  maximumMonthlyPayment Decimal? @db.Decimal(12, 2)
+  preferredLanguage     String   @default("cs")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+/// A named search a user is running (e.g. "Byt v Brně pro rodinu").
+model SearchProfile {
+  id                    String        @id @default(cuid())
+  userId                String
+  name                  String
+  purpose               SearchPurpose @default(OWN_LIVING)
+  minimumPrice          Decimal?      @db.Decimal(12, 2)
+  idealPrice            Decimal?      @db.Decimal(12, 2)
+  maximumPrice          Decimal?      @db.Decimal(12, 2)
+  minimumArea           Float?
+  maximumArea           Float?
+  minimumRooms          Int?
+  maximumRooms          Int?
+  preferredRegions      String[]      @default([])
+  preferredCities       String[]      @default([])
+  excludedLocations     String[]      @default([])
+  maximumCommuteMinutes Int?
+  commuteDestination    String?
+  isActive              Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferences Preference[]
+  aiAnalyses  AIAnalysis[]
+
+  @@index([userId])
+  @@map("search_profiles")
+}
+
+/// A single soft/hard preference inside a search profile (key/value + weight).
+model Preference {
+  id              String  @id @default(cuid())
+  searchProfileId String
+  key             String
+  value           String
+  /// 1 (nice to have) .. 5 (very important)
+  priority        Int     @default(3)
+  isRequired      Boolean @default(false)
+
+  searchProfile SearchProfile @relation(fields: [searchProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([searchProfileId, key])
+  @@map("preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Properties & listings
+// ---------------------------------------------------------------------------
+
+/// A physical property, independent of the portal(s) advertising it.
+model Property {
+  id                 String            @id @default(cuid())
+  propertyType       PropertyType
+  disposition        Disposition       @default(UNKNOWN)
+  /// usable area in m2
+  area               Float?
+  region             String?
+  district           String?
+  city               String?
+  cityPart           String?
+  approximateAddress String?
+  latitude           Float?
+  longitude          Float?
+  ownershipType      OwnershipType     @default(UNKNOWN)
+  condition          PropertyCondition @default(UNKNOWN)
+  floor              Int?
+  totalFloors        Int?
+  hasElevator        Boolean?
+  hasBalcony         Boolean?
+  hasTerrace         Boolean?
+  hasGarden          Boolean?
+  hasCellar          Boolean?
+  hasGarage          Boolean?
+  hasParking         Boolean?
+  energyClass        EnergyClass       @default(UNKNOWN)
+  constructionType   ConstructionType  @default(UNKNOWN)
+  yearBuilt          Int?
+  yearRenovated      Int?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  listings        PropertyListing[]
+  savedBy         SavedProperty[]
+  comparisonItems PropertyComparisonItem[]
+  aiAnalyses      AIAnalysis[]
+
+  @@index([city])
+  @@index([propertyType])
+  @@map("properties")
+}
+
+/// An external offer of a property on a specific portal.
+model PropertyListing {
+  id                    String        @id @default(cuid())
+  propertyId            String
+  sourceId              String
+  /// listing id on the source portal
+  externalId            String?
+  sourceUrl             String
+  title                 String
+  previewImageUrl       String?
+  price                 Decimal?      @db.Decimal(12, 2)
+  pricePerSquareMeter   Decimal?      @db.Decimal(12, 2)
+  currency              String        @default("CZK")
+  commissionIncluded    Boolean?
+  sellerType            SellerType    @default(UNKNOWN)
+  agencyName            String?
+  firstSeenAt           DateTime      @default(now())
+  lastCheckedAt         DateTime      @default(now())
+  listingStatus         ListingStatus @default(ACTIVE)
+  /// 0..1 — how complete the imported metadata is
+  dataCompleteness      Float         @default(0)
+  /// whether the source permits showing its preview image
+  imageUsageAllowed     Boolean       @default(false)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  property     Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  source       ListingSource  @relation(fields: [sourceId], references: [id])
+  priceHistory PriceHistory[]
+
+  @@unique([sourceId, externalId])
+  @@index([propertyId])
+  @@map("property_listings")
+}
+
+/// A real-estate portal (Sreality, Bezrealitky, ...).
+model ListingSource {
+  id                  String          @id @default(cuid())
+  name                String          @unique
+  domain              String          @unique
+  logoUrl             String?
+  integrationType     IntegrationType @default(MANUAL_LINK)
+  isActive            Boolean         @default(true)
+  allowPreviewImages  Boolean         @default(false)
+  allowMetadataImport Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  listings PropertyListing[]
+
+  @@map("listing_sources")
+}
+
+model PriceHistory {
+  id                String   @id @default(cuid())
+  propertyListingId String
+  price             Decimal  @db.Decimal(12, 2)
+  recordedAt        DateTime @default(now())
+
+  propertyListing PropertyListing @relation(fields: [propertyListingId], references: [id], onDelete: Cascade)
+
+  @@index([propertyListingId, recordedAt])
+  @@map("price_history")
+}
+
+// ---------------------------------------------------------------------------
+// User ↔ property interactions
+// ---------------------------------------------------------------------------
+
+model SavedProperty {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("saved_properties")
+}
+
+model PropertyComparison {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items PropertyComparisonItem[]
+
+  @@index([userId])
+  @@map("property_comparisons")
+}
+
+model PropertyComparisonItem {
+  id           String @id @default(cuid())
+  comparisonId String
+  propertyId   String
+  position     Int    @default(0)
+
+  comparison PropertyComparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  property   Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([comparisonId, propertyId])
+  @@map("property_comparison_items")
+}
+
+// ---------------------------------------------------------------------------
+// AI analysis
+// ---------------------------------------------------------------------------
+
+/// Stored result of an AI evaluation of a property against a search profile.
+model AIAnalysis {
+  id                 String   @id @default(cuid())
+  userId             String
+  propertyId         String
+  searchProfileId    String?
+  /// all scores 0..100
+  overallScore       Int
+  financialScore     Int?
+  requirementsScore  Int?
+  locationScore      Int?
+  priceScore         Int?
+  conditionScore     Int?
+  /// 0..1 — confidence given available data
+  dataConfidence     Float    @default(0)
+  summary            String
+  strengths          String[] @default([])
+  weaknesses         String[] @default([])
+  compromises        String[] @default([])
+  missingInformation String[] @default([])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  searchProfile SearchProfile? @relation(fields: [searchProfileId], references: [id], onDelete: SetNull)
+  riskFlags     RiskFlag[]
+
+  @@index([userId, propertyId])
+  @@map("ai_analyses")
+}
+
+model RiskFlag {
+  id             String       @id @default(cuid())
+  aiAnalysisId   String
+  type           String
+  severity       RiskSeverity @default(MEDIUM)
+  title          String
+  description    String
+  recommendation String?
+
+  aiAnalysis AIAnalysis @relation(fields: [aiAnalysisId], references: [id], onDelete: Cascade)
+
+  @@index([aiAnalysisId])
+  @@map("risk_flags")
+}
+
+// ---------------------------------------------------------------------------
+// Billing & usage
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  plan               SubscriptionPlan   @default(FREE)
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model UsageLimit {
+  id                   String   @id @default(cuid())
+  userId               String
+  /// billing period key, e.g. "2026-07"
+  period               String
+  aiAnalysesUsed       Int      @default(0)
+  savedPropertiesCount Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period])
+  @@map("usage_limits")
+}
